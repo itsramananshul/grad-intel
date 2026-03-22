@@ -1,10 +1,17 @@
-# Gradintel — Your Academic Performance Dashboard
+# 📊 Gradintel — Track · Predict · Improve
 
-**Track your grades, predict your GPA, and never get surprised by your results again.**
+> The smartest GPA tracker for university students. Know exactly what you need to score — before the exam.
 
-Gradintel is a free web app for university students. You log your exam scores, and it tells you your current GPA, what you need to score on upcoming exams to hit your grade targets, and gives you AI-powered study advice — all in one place.
+🌐  https://gradintel.anshulraman.com
 
 ---
+
+## What is Gradintel?
+
+Gradintel is a web app that takes the guesswork out of your grades. Instead of wondering "what do I need on the final?", Gradintel tells you — down to the exact percentage — for every grade you're aiming for, across every course.
+
+It syncs to the cloud, works on any device, and takes about 2 minutes to set up.
+
 
 ## Getting Started
 
@@ -310,5 +317,16 @@ Make sure you've added at least one subject with at least one score entered. The
 On the sign-in screen, click **Forgot password? Reset via email**, enter your email, and you'll get a reset link.
 
 ---
+---
+
+## 📬 Feedback
+
+Found a bug or have a feature idea? Use the  Feedback  tab inside the app, or reach out directly.
+
+📧 mailto:ar.dev@anshulraman.com
+
+---
 
 *Gradintel v4.0 — built for students, by a student.*
+📜 License
+© 2026 Anshul Raman. 
