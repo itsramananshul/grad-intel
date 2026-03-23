@@ -1527,14 +1527,7 @@ Result: {"subjects":[{"name":"Computer Science I","credits":null,"other_pct":80,
       } else {
         // Has text — send to free Pollinations AI
         statusEl.innerHTML = `<div class="infobox" style="display:flex;align-items:center;gap:10px"><span style="animation:spin 1s linear infinite;display:inline-block;font-size:18px">⚙️</span><span>Analysing syllabus content...</span></div>`;
-        const res = await fetch('https://text.pollinations.ai/', {
-          method: 'POST', headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ messages: [
-            { role: 'system', content: systemPrompt },
-            { role: 'user', content: 'Parse this syllabus:\n\n' + pdfText.slice(0, 8000) }
-          ], model: 'openai', seed: 42 })
-        });
-        rawText = res.ok ? (await res.text()).trim() : '';
+        rawText = await callFreeAI(systemPrompt, 'Parse this syllabus:\n\n' + pdfText.slice(0, 8000));
       }
     } else if (isImage) {
       if (key && prov === 'claude') {
@@ -1558,14 +1551,7 @@ Result: {"subjects":[{"name":"Computer Science I","credits":null,"other_pct":80,
     } else {
       // Plain text file — free
       const fileText = await file.text();
-      const res = await fetch('https://text.pollinations.ai/', {
-        method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ messages: [
-          { role: 'system', content: systemPrompt },
-          { role: 'user', content: 'Parse this syllabus:\n\n' + fileText.slice(0, 8000) }
-        ], model: 'openai', seed: 42 })
-      });
-      rawText = res.ok ? (await res.text()).trim() : '';
+      rawText = await callFreeAI(systemPrompt, 'Parse this syllabus:\n\n' + fileText.slice(0, 8000));
     }
 
     if (!rawText) throw new Error('No response from AI. Please try again.');
@@ -1740,6 +1726,66 @@ function fillFormsFromSyllabus() {
 // ══════════════════════════════════════════════════════════════
 // AI ASSISTANT — MULTI PROVIDER
 // ══════════════════════════════════════════════════════════════
+
+// ── FREE AI HELPER — tries multiple endpoints, no key needed ──────────────
+async function callFreeAI(systemPrompt, userMessage) {
+  const errors = [];
+
+  // Attempt 1: Pollinations OpenAI-compatible endpoint
+  try {
+    const r1 = await fetch('https://text.pollinations.ai/openai/chat/completions', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        model: 'openai-fast',
+        messages: [{ role: 'system', content: systemPrompt }, { role: 'user', content: userMessage }],
+        max_tokens: 500,
+        seed: Math.floor(Math.random() * 99999)
+      })
+    });
+    if (r1.ok) {
+      const j = await r1.json();
+      const t = j.choices?.[0]?.message?.content || '';
+      if (t.trim()) return t.trim();
+    }
+    errors.push('attempt1: ' + r1.status);
+  } catch(e) { errors.push('attempt1: ' + e.message); }
+
+  // Attempt 2: Pollinations plain GET endpoint
+  try {
+    const prompt = encodeURIComponent(systemPrompt.slice(0, 200) + ' ' + userMessage);
+    const r2 = await fetch('https://text.pollinations.ai/' + prompt + '?model=openai&seed=' + Date.now(), {
+      signal: AbortSignal.timeout(12000)
+    });
+    if (r2.ok) {
+      const t = await r2.text();
+      if (t.trim()) return t.trim();
+    }
+    errors.push('attempt2: ' + r2.status);
+  } catch(e) { errors.push('attempt2: ' + e.message); }
+
+  // Attempt 3: Pollinations POST plain text endpoint
+  try {
+    const r3 = await fetch('https://text.pollinations.ai/', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        messages: [{ role: 'system', content: systemPrompt }, { role: 'user', content: userMessage }],
+        model: 'openai', seed: Math.floor(Math.random() * 99999)
+      }),
+      signal: AbortSignal.timeout(12000)
+    });
+    if (r3.ok) {
+      const t = await r3.text();
+      if (t.trim()) return t.trim();
+    }
+    errors.push('attempt3: ' + r3.status);
+  } catch(e) { errors.push('attempt3: ' + e.message); }
+
+  throw new Error('Free AI temporarily unavailable. Get a free Groq key at console.groq.com (takes 2 min, no credit card).');
+}
+// ─────────────────────────────────────────────────────────────────────────────
+
 async function runAI() {
   const inp = document.getElementById('ai-input').value.trim();
   if (!inp) { showToast('Type a question first!'); return; }
@@ -1763,16 +1809,7 @@ async function runAI() {
     let text = '';
 
     if (!key || !prov) {
-      // FREE built-in: Pollinations.AI — no key needed, returns plain text
-      const res = await fetch('https://text.pollinations.ai/', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ messages: [{ role: 'system', content: systemPrompt }, { role: 'user', content: inp }], model: 'openai', seed: Math.floor(Math.random()*9999) })
-      });
-      if (!res.ok) throw new Error('Free AI unavailable (status ' + res.status + '). Set up a free Groq key for reliable access.');
-      text = await res.text();
-      text = text.trim();
-      if (!text) throw new Error('Free AI returned empty response. Try again or set up a free Groq key.');
+      text = await callFreeAI(systemPrompt, inp);
     } else if (prov === 'groq') {
       const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
         method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + key },
@@ -2322,3 +2359,4 @@ function initAnimations() {
     if (event === 'SIGNED_IN' && session && !currentUser) { currentUser = session.user; await onAuthSuccess(); }
   });
 })();
+
