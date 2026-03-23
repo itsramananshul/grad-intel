@@ -1505,15 +1505,54 @@ Result: {"subjects":[{"name":"Computer Science I","credits":null,"other_pct":80,
       statusEl.innerHTML = `<div class="infobox" style="display:flex;align-items:center;gap:10px"><span style="animation:spin 1s linear infinite;display:inline-block;font-size:18px">⚙️</span><span>Extracting text from PDF...</span></div>`;
       const pdfText = await extractPDFText(file);
       if (!pdfText || pdfText.trim().length < 50) {
-        // Scanned/image-based PDF — needs Claude vision
+        // Scanned/image-based PDF — render pages to images and use free vision AI
+        statusEl.innerHTML = `<div class="infobox" style="display:flex;align-items:center;gap:10px"><span style="animation:spin 1s linear infinite;display:inline-block;font-size:18px">⚙️</span><span>Rendering scanned PDF pages for AI vision...</span></div>`;
+        try {
+          const images = await scannedPdfToImages(file, 4);
+          if (!images.length) throw new Error('Could not render PDF pages.');
+          rawText = await callFreeVisionAI(systemPrompt, 'Extract subject/course grading info from these syllabus pages. Return only JSON.', images);
+        } catch(visionErr) {
+          // If user has Claude key, try that as backup
+          if (key && prov === 'claude') {
+            const base64 = await fileToBase64(file);
+            const response = await fetch('https://api.anthropic.com/v1/messages', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json', 'x-api-key': key, 'anthropic-version': '2023-06-01', 'anthropic-dangerous-direct-browser-access': 'true' },
+              body: JSON.stringify({ model: 'claude-opus-4-6', max_tokens: 2000, system: systemPrompt,
+                messages: [{ role: 'user', content: [
+                  { type: 'document', source: { type: 'base64', media_type: 'application/pdf', data: base64 } },
+                  { type: 'text', text: 'Extract subject info. Return only JSON.' }
+                ]}]
+              })
+            });
+            const data = await response.json();
+            if (data.error) throw new Error(data.error.message);
+            rawText = data.content?.[0]?.text || '';
+          } else {
+            throw new Error('Scanned PDF vision failed: ' + visionErr.message + '. Try uploading a text-based PDF instead.');
+          }
+        }
+      } else {
+        // Has text — send to free Pollinations AI
+        statusEl.innerHTML = `<div class="infobox" style="display:flex;align-items:center;gap:10px"><span style="animation:spin 1s linear infinite;display:inline-block;font-size:18px">⚙️</span><span>Analysing syllabus content...</span></div>`;
+        rawText = await callFreeAI(systemPrompt, 'Parse this syllabus:\n\n' + pdfText.slice(0, 8000));
+      }
+    } else if (isImage) {
+      // Convert image to base64 and send to free vision AI
+      statusEl.innerHTML = `<div class="infobox" style="display:flex;align-items:center;gap:10px"><span style="animation:spin 1s linear infinite;display:inline-block;font-size:18px">⚙️</span><span>Sending image to AI vision...</span></div>`;
+      const base64 = await fileToBase64(file);
+      // fileToBase64 returns full data URL - strip prefix for vision helper
+      const b64data = base64.includes(',') ? base64.split(',')[1] : base64;
+      try {
+        rawText = await callFreeVisionAI(systemPrompt, 'Extract subject/course grading info from this syllabus image. Return only JSON.', [b64data]);
+      } catch(visionErr) {
         if (key && prov === 'claude') {
-          const base64 = await fileToBase64(file);
           const response = await fetch('https://api.anthropic.com/v1/messages', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json', 'x-api-key': key, 'anthropic-version': '2023-06-01', 'anthropic-dangerous-direct-browser-access': 'true' },
             body: JSON.stringify({ model: 'claude-opus-4-6', max_tokens: 2000, system: systemPrompt,
               messages: [{ role: 'user', content: [
-                { type: 'document', source: { type: 'base64', media_type: 'application/pdf', data: base64 } },
+                { type: 'image', source: { type: 'base64', media_type: file.type, data: b64data } },
                 { type: 'text', text: 'Extract subject info. Return only JSON.' }
               ]}]
             })
@@ -1522,31 +1561,8 @@ Result: {"subjects":[{"name":"Computer Science I","credits":null,"other_pct":80,
           if (data.error) throw new Error(data.error.message);
           rawText = data.content?.[0]?.text || '';
         } else {
-          throw new Error('This PDF appears to be a scanned image and has no readable text. Please either: (1) use a text-based PDF, or (2) set up a Claude API key for image reading.');
+          throw new Error('Image vision failed: ' + visionErr.message);
         }
-      } else {
-        // Has text — send to free Pollinations AI
-        statusEl.innerHTML = `<div class="infobox" style="display:flex;align-items:center;gap:10px"><span style="animation:spin 1s linear infinite;display:inline-block;font-size:18px">⚙️</span><span>Analysing syllabus content...</span></div>`;
-        rawText = await callFreeAI(systemPrompt, 'Parse this syllabus:\n\n' + pdfText.slice(0, 8000));
-      }
-    } else if (isImage) {
-      if (key && prov === 'claude') {
-        const base64 = await fileToBase64(file);
-        const response = await fetch('https://api.anthropic.com/v1/messages', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json', 'x-api-key': key, 'anthropic-version': '2023-06-01', 'anthropic-dangerous-direct-browser-access': 'true' },
-          body: JSON.stringify({ model: 'claude-opus-4-6', max_tokens: 2000, system: systemPrompt,
-            messages: [{ role: 'user', content: [
-              { type: 'image', source: { type: 'base64', media_type: file.type, data: base64 } },
-              { type: 'text', text: 'Extract subject info. Return only JSON.' }
-            ]}]
-          })
-        });
-        const data = await response.json();
-        if (data.error) throw new Error(data.error.message);
-        rawText = data.content?.[0]?.text || '';
-      } else {
-        throw new Error('Image syllabuses require a Claude API key. Please upload a PDF or .txt file instead — those work for free!');
       }
     } else {
       // Plain text file — free
@@ -1727,63 +1743,127 @@ function fillFormsFromSyllabus() {
 // AI ASSISTANT — MULTI PROVIDER
 // ══════════════════════════════════════════════════════════════
 
-// ── FREE AI HELPER — tries multiple endpoints, no key needed ──────────────
-async function callFreeAI(systemPrompt, userMessage) {
-  const errors = [];
+// ── GRADINTEL AI — Puter.js (free, no key, no signup ever) ──────────────────
+// Uses puter.js loaded in index.html. Falls back to Pollinations if unavailable.
 
-  // Attempt 1: Pollinations OpenAI-compatible endpoint
-  try {
-    const r1 = await fetch('https://text.pollinations.ai/openai/chat/completions', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        model: 'openai-fast',
-        messages: [{ role: 'system', content: systemPrompt }, { role: 'user', content: userMessage }],
-        max_tokens: 500,
-        seed: Math.floor(Math.random() * 99999)
-      })
-    });
-    if (r1.ok) {
-      const j = await r1.json();
-      const t = j.choices?.[0]?.message?.content || '';
-      if (t.trim()) return t.trim();
-    }
-    errors.push('attempt1: ' + r1.status);
-  } catch(e) { errors.push('attempt1: ' + e.message); }
-
-  // Attempt 2: Pollinations plain GET endpoint
-  try {
-    const prompt = encodeURIComponent(systemPrompt.slice(0, 200) + ' ' + userMessage);
-    const r2 = await fetch('https://text.pollinations.ai/' + prompt + '?model=openai&seed=' + Date.now(), {
-      signal: AbortSignal.timeout(12000)
-    });
-    if (r2.ok) {
-      const t = await r2.text();
-      if (t.trim()) return t.trim();
-    }
-    errors.push('attempt2: ' + r2.status);
-  } catch(e) { errors.push('attempt2: ' + e.message); }
-
-  // Attempt 3: Pollinations POST plain text endpoint
-  try {
-    const r3 = await fetch('https://text.pollinations.ai/', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        messages: [{ role: 'system', content: systemPrompt }, { role: 'user', content: userMessage }],
-        model: 'openai', seed: Math.floor(Math.random() * 99999)
-      }),
-      signal: AbortSignal.timeout(12000)
-    });
-    if (r3.ok) {
-      const t = await r3.text();
-      if (t.trim()) return t.trim();
-    }
-    errors.push('attempt3: ' + r3.status);
-  } catch(e) { errors.push('attempt3: ' + e.message); }
-
-  throw new Error('Free AI temporarily unavailable. Get a free Groq key at console.groq.com (takes 2 min, no credit card).');
+async function _ensurePuter() {
+  if (window.puter && window.puter.ai) return true;
+  // Load puter.js on demand
+  return new Promise((resolve) => {
+    if (document.getElementById('puter-script')) { resolve(false); return; }
+    const s = document.createElement('script');
+    s.id = 'puter-script';
+    s.src = 'https://js.puter.com/v2/';
+    s.onload = () => resolve(!!(window.puter && window.puter.ai));
+    s.onerror = () => resolve(false);
+    document.head.appendChild(s);
+  });
 }
+
+async function _puterAI(systemPrompt, userMessage) {
+  const ok = await _ensurePuter();
+  if (!ok) throw new Error('Puter unavailable');
+  const fullMsg = systemPrompt ? systemPrompt + '\n\n' + userMessage : userMessage;
+  const res = await puter.ai.chat(fullMsg, { model: 'gpt-4o-mini' });
+  const text = typeof res === 'string' ? res : res?.message?.content || res?.text || '';
+  if (!text.trim()) throw new Error('Empty response');
+  return text.trim();
+}
+
+async function _puterVisionAI(systemPrompt, userText, imageBase64Array) {
+  const ok = await _ensurePuter();
+  if (!ok) throw new Error('Puter unavailable');
+  const fullMsg = systemPrompt ? systemPrompt + '\n\n' + userText : userText;
+  // Puter supports image URLs - we pass as data URLs
+  const imageUrl = 'data:image/png;base64,' + imageBase64Array[0];
+  const res = await puter.ai.chat(fullMsg, imageUrl, { model: 'gpt-4o' });
+  const text = typeof res === 'string' ? res : res?.message?.content || res?.text || '';
+  if (!text.trim()) throw new Error('Empty response');
+  return text.trim();
+}
+
+async function _pollinationsAI(system, userMsg) {
+  const msgs = [];
+  if (system) msgs.push({ role: 'system', content: system });
+  msgs.push({ role: 'user', content: userMsg });
+  try {
+    const r = await fetch('https://text.pollinations.ai/openai/chat/completions', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ model: 'openai-fast', messages: msgs, max_tokens: 800, seed: Date.now() % 99999 }),
+      signal: AbortSignal.timeout(15000)
+    });
+    if (r.ok) { const j = await r.json(); const t = j.choices?.[0]?.message?.content || ''; if (t.trim()) return t.trim(); }
+  } catch(e) {}
+  const r2 = await fetch('https://text.pollinations.ai/', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ messages: msgs, model: 'openai', seed: Date.now() % 99999 }),
+    signal: AbortSignal.timeout(15000)
+  });
+  if (r2.ok) { const t = await r2.text(); if (t.trim()) return t.trim(); }
+  throw new Error('unavailable (' + r2.status + ')');
+}
+
+async function callFreeAI(systemPrompt, userMessage) {
+  // 1. Puter.js — completely free, no key, no signup, GPT-4o quality
+  try { return await _puterAI(systemPrompt, userMessage); } catch(e) { console.warn('[AI] Puter:', e.message); }
+  // 2. Pollinations fallback
+  try { return await _pollinationsAI(systemPrompt, userMessage); } catch(e) { console.warn('[AI] Pollinations:', e.message); }
+  throw new Error('AI temporarily unavailable. Please try again in a few seconds.');
+}
+
+async function callFreeVisionAI(systemPrompt, userText, imageBase64Array) {
+  // 1. Puter.js vision — free, no key
+  try { return await _puterVisionAI(systemPrompt, userText, imageBase64Array); } catch(e) { console.warn('[Vision] Puter:', e.message); }
+  // 2. Pollinations vision fallback
+  try {
+    const content = [
+      ...imageBase64Array.map(b64 => ({ type: 'image_url', image_url: { url: 'data:image/png;base64,' + b64 } })),
+      { type: 'text', text: userText }
+    ];
+    const msgs = [{ role: 'user', content }];
+    if (systemPrompt) msgs.unshift({ role: 'system', content: systemPrompt });
+    const r = await fetch('https://text.pollinations.ai/openai/chat/completions', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ model: 'openai', messages: msgs, max_tokens: 1500 }),
+      signal: AbortSignal.timeout(20000)
+    });
+    if (r.ok) { const j = await r.json(); const t = j.choices?.[0]?.message?.content || ''; if (t.trim()) return t.trim(); }
+  } catch(e) { console.warn('[Vision] Pollinations:', e.message); }
+  throw new Error('Vision AI temporarily unavailable. Please try again.');
+}
+
+async function scannedPdfToImages(file, maxPages) {
+  maxPages = maxPages || 5;
+  const arrayBuffer = await file.arrayBuffer();
+  const pdfData = new Uint8Array(arrayBuffer);
+  if (!window.pdfjsLib) {
+    await new Promise((resolve, reject) => {
+      const s = document.createElement('script');
+      s.src = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js';
+      s.onload = resolve; s.onerror = reject;
+      document.head.appendChild(s);
+    });
+    window.pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+  }
+  const doc = await window.pdfjsLib.getDocument({ data: pdfData }).promise;
+  const images = [];
+  for (let i = 1; i <= Math.min(doc.numPages, maxPages); i++) {
+    const page = await doc.getPage(i);
+    const viewport = page.getViewport({ scale: 1.5 });
+    const canvas = document.createElement('canvas');
+    canvas.width = viewport.width; canvas.height = viewport.height;
+    await page.render({ canvasContext: canvas.getContext('2d'), viewport }).promise;
+    images.push(canvas.toDataURL('image/png').split(',')[1]);
+  }
+  return images;
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+
+
 // ─────────────────────────────────────────────────────────────────────────────
 
 async function runAI() {
@@ -2359,4 +2439,3 @@ function initAnimations() {
     if (event === 'SIGNED_IN' && session && !currentUser) { currentUser = session.user; await onAuthSuccess(); }
   });
 })();
-
