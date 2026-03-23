@@ -1743,139 +1743,79 @@ function fillFormsFromSyllabus() {
 // AI ASSISTANT — MULTI PROVIDER
 // ══════════════════════════════════════════════════════════════
 
-// ── GRADINTEL AI — races 5 free providers, first to respond wins ────────────
+// ── GRADINTEL AI — Pollinations authenticated ────────────────────────────────
+const _PK = 'pk_baCEYMuHFzHHJTBf';
 
 async function callFreeAI(systemPrompt, userMessage) {
-  const msg = systemPrompt ? systemPrompt + '\n\n' + userMessage : userMessage;
   const msgs = [];
   if (systemPrompt) msgs.push({ role: 'system', content: systemPrompt });
   msgs.push({ role: 'user', content: userMessage });
 
-  // Race all providers — whichever responds first wins
-  const providers = [
-
-    // 1. Airforce AI — no key, OpenAI-compatible
-    fetch('https://api.airforce/v1/chat/completions', {
-      method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ model: 'gpt-4o-mini', messages: msgs, max_tokens: 800 }),
-      signal: AbortSignal.timeout(15000)
-    }).then(async r => {
-      if (!r.ok) throw new Error('airforce ' + r.status);
-      const j = await r.json();
-      const t = j.choices?.[0]?.message?.content || '';
-      if (!t.trim()) throw new Error('airforce empty');
-      return t.trim();
-    }),
-
-    // 2. g4f.dev public API — no key
-    fetch('https://api.g4f.dev/v1/chat/completions', {
-      method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ model: 'gpt-4o-mini', messages: msgs, max_tokens: 800 }),
-      signal: AbortSignal.timeout(15000)
-    }).then(async r => {
-      if (!r.ok) throw new Error('g4f ' + r.status);
-      const j = await r.json();
-      const t = j.choices?.[0]?.message?.content || '';
-      if (!t.trim()) throw new Error('g4f empty');
-      return t.trim();
-    }),
-
-    // 3. Pollinations OpenAI-compatible
-    fetch('https://text.pollinations.ai/openai/chat/completions', {
-      method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ model: 'openai-fast', messages: msgs, max_tokens: 800, seed: Date.now() % 99999 }),
-      signal: AbortSignal.timeout(15000)
-    }).then(async r => {
-      if (!r.ok) throw new Error('pollinations ' + r.status);
-      const j = await r.json();
-      const t = j.choices?.[0]?.message?.content || '';
-      if (!t.trim()) throw new Error('pollinations empty');
-      return t.trim();
-    }),
-
-    // 4. Pollinations plain text
-    fetch('https://text.pollinations.ai/', {
-      method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ messages: msgs, model: 'openai', seed: Date.now() % 99999 }),
-      signal: AbortSignal.timeout(15000)
-    }).then(async r => {
-      if (!r.ok) throw new Error('pollinations2 ' + r.status);
-      const t = await r.text();
-      if (!t.trim()) throw new Error('pollinations2 empty');
-      return t.trim();
-    }),
-
-    // 5. Keyless GPT-4o-mini GET endpoint
-    fetch('https://free-unoficial-gpt4o-mini-api-g70n.onrender.com/chat/?query=' + encodeURIComponent(msg), {
+  // Try authenticated Pollinations endpoints in order
+  const attempts = [
+    () => fetch('https://text.pollinations.ai/openai/chat/completions', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + _PK },
+      body: JSON.stringify({ model: 'openai', messages: msgs, max_tokens: 800, seed: Date.now() % 99999 }),
       signal: AbortSignal.timeout(20000)
     }).then(async r => {
-      if (!r.ok) throw new Error('gpt4free ' + r.status);
+      if (!r.ok) throw new Error(r.status);
       const j = await r.json();
-      const t = j.response || j.text || j.content || j.message || '';
-      if (!t.trim()) throw new Error('gpt4free empty');
+      const t = j.choices?.[0]?.message?.content || '';
+      if (!t.trim()) throw new Error('empty');
       return t.trim();
     }),
-
+    () => fetch('https://text.pollinations.ai/', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + _PK },
+      body: JSON.stringify({ messages: msgs, model: 'openai', seed: Date.now() % 99999 }),
+      signal: AbortSignal.timeout(20000)
+    }).then(async r => {
+      if (!r.ok) throw new Error(r.status);
+      const t = await r.text();
+      if (!t.trim()) throw new Error('empty');
+      return t.trim();
+    }),
+    () => fetch('https://text.pollinations.ai/openai/chat/completions', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + _PK },
+      body: JSON.stringify({ model: 'openai-fast', messages: msgs, max_tokens: 800 }),
+      signal: AbortSignal.timeout(20000)
+    }).then(async r => {
+      if (!r.ok) throw new Error(r.status);
+      const j = await r.json();
+      const t = j.choices?.[0]?.message?.content || '';
+      if (!t.trim()) throw new Error('empty');
+      return t.trim();
+    }),
   ];
 
-  // Return first success
-  return Promise.any(providers).catch(() => {
-    throw new Error('AI temporarily unavailable. Please try again in a few seconds.');
-  });
+  for (const attempt of attempts) {
+    try { return await attempt(); } catch(e) { console.warn('[AI]', e.message); }
+  }
+  throw new Error('AI temporarily unavailable. Please try again.');
 }
 
 async function callFreeVisionAI(systemPrompt, userText, imageBase64Array) {
-  const msgs = [];
-  if (systemPrompt) msgs.push({ role: 'system', content: systemPrompt });
-  msgs.push({ role: 'user', content: [
+  const content = [
     ...imageBase64Array.map(b64 => ({ type: 'image_url', image_url: { url: 'data:image/png;base64,' + b64 } })),
     { type: 'text', text: userText }
-  ]});
-
-  const providers = [
-    // 1. Airforce AI with vision
-    fetch('https://api.airforce/v1/chat/completions', {
-      method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ model: 'gpt-4o', messages: msgs, max_tokens: 1500 }),
-      signal: AbortSignal.timeout(20000)
-    }).then(async r => {
-      if (!r.ok) throw new Error('airforce-v ' + r.status);
-      const j = await r.json();
-      const t = j.choices?.[0]?.message?.content || '';
-      if (!t.trim()) throw new Error('empty');
-      return t.trim();
-    }),
-
-    // 2. g4f.dev with vision
-    fetch('https://api.g4f.dev/v1/chat/completions', {
-      method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ model: 'gpt-4o', messages: msgs, max_tokens: 1500 }),
-      signal: AbortSignal.timeout(20000)
-    }).then(async r => {
-      if (!r.ok) throw new Error('g4f-v ' + r.status);
-      const j = await r.json();
-      const t = j.choices?.[0]?.message?.content || '';
-      if (!t.trim()) throw new Error('empty');
-      return t.trim();
-    }),
-
-    // 3. Pollinations vision
-    fetch('https://text.pollinations.ai/openai/chat/completions', {
-      method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ model: 'openai', messages: msgs, max_tokens: 1500 }),
-      signal: AbortSignal.timeout(20000)
-    }).then(async r => {
-      if (!r.ok) throw new Error('poll-v ' + r.status);
-      const j = await r.json();
-      const t = j.choices?.[0]?.message?.content || '';
-      if (!t.trim()) throw new Error('empty');
-      return t.trim();
-    }),
   ];
+  const msgs = [];
+  if (systemPrompt) msgs.push({ role: 'system', content: systemPrompt });
+  msgs.push({ role: 'user', content });
 
-  return Promise.any(providers).catch(() => {
-    throw new Error('Vision AI temporarily unavailable. Please try again.');
+  const r = await fetch('https://text.pollinations.ai/openai/chat/completions', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + _PK },
+    body: JSON.stringify({ model: 'openai', messages: msgs, max_tokens: 1500 }),
+    signal: AbortSignal.timeout(25000)
   });
+  if (!r.ok) throw new Error('Vision AI unavailable (' + r.status + ')');
+  const j = await r.json();
+  const t = j.choices?.[0]?.message?.content || '';
+  if (!t.trim()) throw new Error('Empty vision response');
+  return t.trim();
 }
 
 async function scannedPdfToImages(file, maxPages) {
@@ -1903,6 +1843,7 @@ async function scannedPdfToImages(file, maxPages) {
   }
   return images;
 }
+
 
 
 // ─────────────────────────────────────────────────────────────────────────────
