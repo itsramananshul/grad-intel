@@ -1141,7 +1141,7 @@ function handleDegreePdfFile(file) {
             body: JSON.stringify({ model:'claude-haiku-4-5-20251001', max_tokens:2000, messages:[{role:'user',content:textPrompt}]})
           });
           const d = await res.json(); jsonText = d?.content?.[0]?.text || '';
-        } else {
+        } else if (prov && key) {
           const urls = { groq:'https://api.groq.com/openai/v1/chat/completions', openai:'https://api.openai.com/v1/chat/completions' };
           const models = { groq:'llama3-8b-8192', openai:'gpt-4o-mini' };
           const res = await fetch(urls[prov]||urls.openai, {
@@ -1149,6 +1149,9 @@ function handleDegreePdfFile(file) {
             body: JSON.stringify({ model:models[prov]||models.openai, max_tokens:2000, messages:[{role:'user',content:textPrompt}]})
           });
           const d = await res.json(); jsonText = d?.choices?.[0]?.message?.content || '';
+        } else {
+          // No key set — use free AI
+          jsonText = await callFreeAI('You are a university degree requirements extractor. Return ONLY valid JSON, no markdown.', textPrompt);
         }
       }
 
