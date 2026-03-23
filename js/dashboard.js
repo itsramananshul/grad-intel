@@ -401,7 +401,7 @@ function openEditSubject(semId, subjectId) {
       </select>
     </div>
     <div class="divider"></div>
-    <div style="font-family:'Clash Display',sans-serif;font-weight:700;font-size:13px;color:var(--muted2);letter-spacing:.1em;text-transform:uppercase;margin-bottom:12px">Exams</div>
+    <div style="font-family:Clash Display,sans-serif;font-weight:700;font-size:13px;color:var(--muted2);letter-spacing:.1em;text-transform:uppercase;margin-bottom:12px">Exams</div>
     <div id="ed-exams">
       ${(s.exams || []).map((e, i) => `
         <div class="exam-card" id="ed-exam-${i}">
@@ -515,14 +515,14 @@ function viewDetail(semId, subjectId) {
       <div class="motiv-ico">${motiv.ico}</div>
       <div><div class="motiv-title">${motiv.title}</div><div style="font-size:12px;color:var(--muted2)">${motiv.msg}</div></div>
     </div>
-    <div style="font-family:'Clash Display',sans-serif;font-weight:700;font-size:12px;color:var(--muted2);letter-spacing:.1em;text-transform:uppercase;margin-bottom:10px">Exams</div>
+    <div style="font-family:Clash Display,sans-serif;font-weight:700;font-size:12px;color:var(--muted2);letter-spacing:.1em;text-transform:uppercase;margin-bottom:10px">Exams</div>
     ${(s.exams || []).map(e => `
       <div style="background:var(--surface2);border:1px solid var(--border);border-radius:var(--r-sm);padding:12px 14px;margin-bottom:8px;display:flex;justify-content:space-between;align-items:center">
-        <div><div style="font-family:'Clash Display',sans-serif;font-weight:700;font-size:13px">${e.name}</div>
+        <div><div style="font-family:Clash Display,sans-serif;font-weight:700;font-size:13px">${e.name}</div>
           <div style="font-size:11px;color:var(--muted)">${e.weight.toFixed(0)}% of course grade</div></div>
         ${e.taken
           ? `<div style="display:flex;align-items:center;gap:8px">
-              <span style="font-family:'Clash Display',sans-serif;font-weight:700;font-size:18px;color:${gCol(pctToG(e.score).l)}">${e.score}%</span>
+              <span style="font-family:Clash Display,sans-serif;font-weight:700;font-size:18px;color:${gCol(pctToG(e.score).l)}">${e.score}%</span>
               <button class="ca-btn" onclick="openEditScore('${semId}','${subjectId}','${e.id}');closeModal()" title="Edit"><svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="url(#site-ig)" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block;vertical-align:middle;flex-shrink:0"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></button>
             </div>`
           : `<div style="display:flex;align-items:center;gap:8px">
@@ -532,7 +532,7 @@ function viewDetail(semId, subjectId) {
       </div>`).join('')}
     ${res.remExams.length > 0 ? `
       <div class="divider"></div>
-      <div style="font-family:'Clash Display',sans-serif;font-weight:700;font-size:12px;color:var(--muted2);letter-spacing:.1em;text-transform:uppercase;margin-bottom:10px">Scores needed</div>
+      <div style="font-family:Clash Display,sans-serif;font-weight:700;font-size:12px;color:var(--muted2);letter-spacing:.1em;text-transform:uppercase;margin-bottom:10px">Scores needed</div>
       <div class="chip-row" id="det-chips"></div>
       <div id="det-ecards"></div>` : ''}`;
   if (res.remExams.length > 0) {
@@ -947,19 +947,19 @@ function renderWIFull() {
   all.forEach(({ s, sem }, si) => {
     const res = computeSubject(s);
     const div = document.createElement('div'); div.style.marginBottom = '24px';
-    div.innerHTML = `<div style="font-family:'Clash Display',sans-serif;font-weight:700;font-size:16px;margin-bottom:10px">${s.name} <span style="font-size:12px;color:var(--muted);font-weight:400">· ${sem.name}</span></div>
+    div.innerHTML = `<div style="font-family:Clash Display,sans-serif;font-weight:700;font-size:16px;margin-bottom:10px">${s.name} <span style="font-size:12px;color:var(--muted);font-weight:400">· ${sem.name}</span></div>
       <div class="infobox">Current: <strong>${res.cur.toFixed(1)}%</strong> (${res.curG.l}) · Remaining weight: <strong>${(res.remFrac * 100).toFixed(1)}%</strong></div>
       <input type="range" min="0" max="100" value="${Math.round(res.cur)}" style="width:100%" oninput="wiUpd(this,${si})"/>
       <div class="slider-labels"><span>0%</span><span>50%</span><span>100%</span></div>
       <div style="display:flex;gap:18px;margin-top:12px;flex-wrap:wrap">
         <div><div style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.1em;margin-bottom:3px">If I score</div>
-          <div id="wi2v${si}" style="font-family:'Clash Display',sans-serif;font-weight:700;font-size:26px;color:var(--accent)">${Math.round(res.cur)}%</div></div>
+          <div id="wi2v${si}" style="font-family:Clash Display,sans-serif;font-weight:700;font-size:26px;color:var(--accent)">${Math.round(res.cur)}%</div></div>
         <div style="font-size:22px;color:var(--muted);display:flex;align-items:center">→</div>
         <div><div style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.1em;margin-bottom:3px">Final Total</div>
-          <div id="wi2t${si}" style="font-family:'Clash Display',sans-serif;font-weight:700;font-size:26px;color:var(--accent3)">—</div></div>
+          <div id="wi2t${si}" style="font-family:Clash Display,sans-serif;font-weight:700;font-size:26px;color:var(--accent3)">—</div></div>
         <div style="font-size:22px;color:var(--muted);display:flex;align-items:center">→</div>
         <div><div style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.1em;margin-bottom:3px">Grade</div>
-          <div id="wi2g${si}" style="font-family:'Clash Display',sans-serif;font-weight:700;font-size:26px">—</div></div>
+          <div id="wi2g${si}" style="font-family:Clash Display,sans-serif;font-weight:700;font-size:26px">—</div></div>
       </div><div class="divider"></div>`;
     c.appendChild(div);
     setTimeout(() => { const sl = div.querySelector('input[type=range]'); wiUpd(sl, si, res); }, 50);
@@ -1032,7 +1032,7 @@ function renderStudy() {
     const res = computeSubject(s);
     const bTarg = res.targets.find(t => t.l === 'B') || res.targets[3];
     const sec = document.createElement('div'); sec.style.marginBottom = '22px';
-    sec.innerHTML = `<div style="font-family:'Clash Display',sans-serif;font-weight:700;font-size:15px;margin-bottom:10px">${s.name} <span style="font-size:12px;font-weight:400;color:var(--muted)">· ${sem.name}</span></div>`;
+    sec.innerHTML = `<div style="font-family:Clash Display,sans-serif;font-weight:700;font-size:15px;margin-bottom:10px">${s.name} <span style="font-size:12px;font-weight:400;color:var(--muted)">· ${sem.name}</span></div>`;
     res.remExams.forEach(ex => {
       const nd = bTarg.perExam.find(p => p.name === ex.name)?.needed || 75;
       let hrs;
@@ -1042,7 +1042,7 @@ function renderStudy() {
       const card = document.createElement('div'); card.className = 'study-card';
       card.style.borderColor = isROI ? 'rgba(129,140,248,.5)' : '';
       card.innerHTML = `<div style="display:flex;justify-content:space-between;align-items:flex-start">
-        <div><div style="font-family:'Clash Display',sans-serif;font-weight:700;font-size:14px;margin-bottom:3px">${ex.name} ${isROI ? '🎯 <span style="font-size:10px;background:rgba(129,140,248,.15);color:var(--accent);padding:2px 7px;border-radius:100px">Highest ROI</span>' : ''}</div>
+        <div><div style="font-family:Clash Display,sans-serif;font-weight:700;font-size:14px;margin-bottom:3px">${ex.name} ${isROI ? '🎯 <span style="font-size:10px;background:rgba(129,140,248,.15);color:var(--accent);padding:2px 7px;border-radius:100px">Highest ROI</span>' : ''}</div>
           <div style="font-size:11px;color:var(--muted)">Target B: ${nd > 100 ? 'Not achievable' : nd <= 0 ? 'Secured' : nd.toFixed(1) + '%'} · Worth ${(ex.gf * 100).toFixed(1)}% of total</div></div>
         <div style="text-align:right"><div class="study-h">${hrs}h</div><div style="font-size:11px;color:var(--muted)">Recommended</div></div>
       </div>
@@ -1080,7 +1080,7 @@ function renderROI() {
         <div class="eneed-meta">+${ex.gradeImpact.toFixed(1)}% impact · ~${ex.hrs}h study · Need ${ex.needed > 100 ? 'too high' : ex.needed <= 0 ? 'secured' : ex.needed.toFixed(0) + '%'}</div>
       </div>
       <div style="text-align:right">
-        <div style="font-family:'Clash Display',sans-serif;font-weight:700;font-size:18px;color:var(--accent)">${ex.roi.toFixed(1)}</div>
+        <div style="font-family:Clash Display,sans-serif;font-weight:700;font-size:18px;color:var(--accent)">${ex.roi.toFixed(1)}</div>
         <div style="font-size:10px;color:var(--muted)">ROI/hr</div>
       </div>
     </div>`).join('');
@@ -1276,27 +1276,24 @@ function renderAIKeyStatusBar() {
   if (!bar) return;
   const key  = getStoredAIKey();
   const prov = getStoredAIProvider();
+  const pollKey = getPollKey();
   const provLabels = { groq: '⚡ Groq', gemini: '✨ Gemini', claude: '🧠 Claude', openai: '🤖 ChatGPT' };
-  if (key && prov) {
-    const masked = key.slice(0,6) + '••••••••' + key.slice(-4);
-    bar.innerHTML = `<div class="ai-key-bar configured">
-      <div style="display:flex;align-items:center;gap:10px">
-        <span style="color:var(--green);font-weight:700">${provLabels[prov] || prov}</span>
-        <span style="color:var(--muted)">${masked}</span>
-      </div>
-      <div style="display:flex;gap:8px">
-        <button class="btn btn-secondary" style="font-size:11px;padding:5px 12px" onclick="openAIKeyModal()">Change</button>
-        <button class="btn btn-red" style="font-size:11px;padding:5px 12px" onclick="deleteAIKey()">Remove</button>
-      </div>
-    </div>`;
+  if (pollKey && !key) {
+    bar.className = 'ai-key-bar configured';
+    bar.innerHTML = '<div><span style="color:var(--green);font-weight:700">🌸 Pollinations Connected</span><div style="font-size:11px;color:var(--muted)">Free AI active — expires in 30 days</div></div>' +
+      '<button class="btn btn-secondary" style="font-size:11px;padding:5px 12px" onclick="setPollKey(\'\');renderAIKeyStatusBar();showToast(\'Disconnected.\')">Disconnect</button>';
+  } else if (key && prov) {
+    bar.className = 'ai-key-bar configured';
+    const masked = key.slice(0, 6) + '••••••' + key.slice(-4);
+    bar.innerHTML = '<div><span style="color:var(--green);font-weight:700">✅ ' + (provLabels[prov]||prov) + ' connected</span><div style="font-size:11px;color:var(--muted)">' + masked + '</div></div>' +
+      '<button class="btn btn-secondary" style="font-size:11px;padding:5px 12px" onclick="openAIKeyModal()">Change</button>';
   } else {
-    bar.innerHTML = `<div class="ai-key-bar configured" style="border-color:rgba(52,211,153,.3);background:rgba(52,211,153,.05)">
-      <div style="display:flex;align-items:center;gap:10px">
-        <span style="color:var(--green);font-weight:700">🟢 AI Ready</span>
-        <span style="color:var(--muted);font-size:12px">Using free built-in AI — no setup needed</span>
-      </div>
-      <button class="btn btn-secondary" style="font-size:11px;padding:5px 12px" onclick="openAIKeyModal()">Use own key</button>
-    </div>`;
+    bar.className = 'ai-key-bar missing';
+    bar.innerHTML = '<div><span style="color:var(--yellow);font-weight:700">⚠️ AI not connected</span><div style="font-size:11px;color:var(--muted)">Connect free or use your own key</div></div>' +
+      '<div style="display:flex;gap:8px">' +
+        '<button class="btn btn-primary" style="font-size:11px;padding:5px 12px" onclick="connectPollAI()">🌸 Connect Free</button>' +
+        '<button class="btn btn-secondary" style="font-size:11px;padding:5px 12px" onclick="openAIKeyModal()">Own Key</button>' +
+      '</div>';
   }
 }
 
@@ -1401,7 +1398,7 @@ function ksGoStep2() {
   const instr = instructions[selectedProvider];
   document.getElementById('ks-instructions').innerHTML = `
     <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px">
-      <div style="font-family:'Clash Display',sans-serif;font-weight:700;font-size:16px">${instr.title}</div>
+      <div style="font-family:Clash Display,sans-serif;font-weight:700;font-size:16px">${instr.title}</div>
       <span style="padding:2px 10px;border-radius:100px;font-size:10px;font-weight:700;background:${instr.badgeColor}22;color:${instr.badgeColor}">${instr.badge}</span>
     </div>
     <div class="ks-instr-box">
@@ -1729,7 +1726,7 @@ function fillFormsFromSyllabus() {
     const fromMissing = [...allMissing].map(m => `⚠️ <strong>${m}</strong> — not found in the syllabus, please fill in manually`);
     const allItems = [...alwaysNeeded, ...fromMissing];
 
-    banner.innerHTML = `<div style="font-family:'Clash Display',sans-serif;font-weight:700;font-size:14px;margin-bottom:10px;color:var(--accent)">✨ Pre-filled from syllabus! You still need to fill in:</div>
+    banner.innerHTML = `<div style="font-family:Clash Display,sans-serif;font-weight:700;font-size:14px;margin-bottom:10px;color:var(--accent)">✨ Pre-filled from syllabus! You still need to fill in:</div>
       <ul style="margin:0;padding-left:18px;font-size:13px;line-height:2">
         ${allItems.map(item => `<li>${item}</li>`).join('')}
       </ul>`;
@@ -1743,24 +1740,72 @@ function fillFormsFromSyllabus() {
 // AI ASSISTANT — MULTI PROVIDER
 // ══════════════════════════════════════════════════════════════
 
-// ── GRADINTEL AI — gen.pollinations.ai with your API key ─────────────────────
-const _PK = 'pk_baCEYMuHFzHHJTBf';
-const _BASE = 'https://gen.pollinations.ai';
+// ── GRADINTEL AI — Pollinations BYOP (user's own free account, no key in code) ──
+const _POLL_BASE    = 'https://gen.pollinations.ai';
+const _POLL_APP_KEY = 'pk_baCEYMuHFzHHJTBf'; // your app's publishable key (for branding)
+const _POLL_KEY_STORE = 'gradintel_poll_user_key';
+
+function getPollKey() {
+  return localStorage.getItem(_POLL_KEY_STORE) || '';
+}
+
+function setPollKey(key) {
+  localStorage.setItem(_POLL_KEY_STORE, key);
+}
+
+// Check URL hash for key after OAuth redirect
+function checkPollRedirect() {
+  if (!location.hash) return;
+  const params = new URLSearchParams(location.hash.slice(1));
+  const key = params.get('api_key');
+  if (key) {
+    setPollKey(key);
+    // Clean the key from URL so it's not visible
+    history.replaceState(null, '', location.pathname + location.search);
+    showToast('✅ AI connected! You can now use all AI features.');
+  }
+}
+
+function connectPollAI() {
+  const params = new URLSearchParams({
+    redirect_url: location.href.split('#')[0],
+    app_key: _POLL_APP_KEY,
+    expiry: '30',
+  });
+  window.location.href = 'https://enter.pollinations.ai/authorize?' + params.toString();
+}
+
+function isPollConnected() {
+  return !!getPollKey();
+}
 
 async function callFreeAI(systemPrompt, userMessage) {
+  let key = getPollKey();
+
+  // No key yet — show connect prompt instead of failing
+  if (!key) {
+    throw new Error('__NEEDS_CONNECT__');
+  }
+
   const msgs = [];
   if (systemPrompt) msgs.push({ role: 'system', content: systemPrompt });
   msgs.push({ role: 'user', content: userMessage });
 
-  const res = await fetch(_BASE + '/v1/chat/completions', {
+  const res = await fetch(_POLL_BASE + '/v1/chat/completions', {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
-      'Authorization': 'Bearer ' + _PK
+      'Authorization': 'Bearer ' + key
     },
     body: JSON.stringify({ model: 'openai', messages: msgs, max_tokens: 800 }),
     signal: AbortSignal.timeout(25000)
   });
+
+  // If key expired, clear it and ask to reconnect
+  if (res.status === 401 || res.status === 403) {
+    setPollKey('');
+    throw new Error('__NEEDS_CONNECT__');
+  }
 
   if (!res.ok) {
     const err = await res.json().catch(() => ({}));
@@ -1769,11 +1814,14 @@ async function callFreeAI(systemPrompt, userMessage) {
 
   const data = await res.json();
   const text = data.choices?.[0]?.message?.content || '';
-  if (!text.trim()) throw new Error('Empty response from AI. Please try again.');
+  if (!text.trim()) throw new Error('Empty response. Please try again.');
   return text.trim();
 }
 
 async function callFreeVisionAI(systemPrompt, userText, imageBase64Array) {
+  let key = getPollKey();
+  if (!key) throw new Error('__NEEDS_CONNECT__');
+
   const content = [
     ...imageBase64Array.map(b64 => ({
       type: 'image_url',
@@ -1785,25 +1833,43 @@ async function callFreeVisionAI(systemPrompt, userText, imageBase64Array) {
   if (systemPrompt) msgs.push({ role: 'system', content: systemPrompt });
   msgs.push({ role: 'user', content });
 
-  const res = await fetch(_BASE + '/v1/chat/completions', {
+  const res = await fetch(_POLL_BASE + '/v1/chat/completions', {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
-      'Authorization': 'Bearer ' + _PK
+      'Authorization': 'Bearer ' + key
     },
     body: JSON.stringify({ model: 'openai', messages: msgs, max_tokens: 1500 }),
     signal: AbortSignal.timeout(30000)
   });
 
-  if (!res.ok) {
-    const err = await res.json().catch(() => ({}));
-    throw new Error(err?.error?.message || 'Vision AI error ' + res.status);
-  }
+  if (res.status === 401 || res.status === 403) { setPollKey(''); throw new Error('__NEEDS_CONNECT__'); }
+  if (!res.ok) { const e = await res.json().catch(()=>({})); throw new Error(e?.error?.message || 'Vision error ' + res.status); }
 
   const data = await res.json();
   const text = data.choices?.[0]?.message?.content || '';
   if (!text.trim()) throw new Error('Empty vision response. Please try again.');
   return text.trim();
+}
+
+function showAIConnectPrompt(containerEl) {
+  if (!containerEl) return;
+  containerEl.innerHTML =
+    '<div style="text-align:center;padding:28px 20px">' +
+      '<div style="font-size:32px;margin-bottom:12px">🤖</div>' +
+      '<div style="font-family:Clash Display,sans-serif;font-weight:700;font-size:16px;margin-bottom:8px">Connect Free AI</div>' +
+      '<div style="font-size:13px;color:var(--muted2);line-height:1.6;margin-bottom:20px;max-width:300px;margin-left:auto;margin-right:auto">' +
+        'Sign in with your free Pollinations account to enable AI features.<br>' +
+        '<span style="color:var(--green);font-weight:600">Free forever · No credit card · Takes 30 seconds</span>' +
+      '</div>' +
+      '<button onclick="connectPollAI()" style="display:inline-flex;align-items:center;gap:8px;padding:12px 24px;' +
+        'background:linear-gradient(135deg,var(--accent),var(--accent2));color:#fff;border:none;' +
+        'border-radius:12px;font-family:Clash Display,sans-serif;font-weight:700;font-size:14px;' +
+        'cursor:pointer;box-shadow:0 4px 20px rgba(129,140,248,.35)">' +
+        '🔗 Connect with Pollinations (free)' +
+      '</button>' +
+      '<div style="font-size:11px;color:var(--muted);margin-top:12px">Redirects to pollinations.ai · comes back here automatically</div>' +
+    '</div>';
 }
 
 async function scannedPdfToImages(file, maxPages) {
@@ -1831,6 +1897,7 @@ async function scannedPdfToImages(file, maxPages) {
   }
   return images;
 }
+
 
 
 
@@ -1902,12 +1969,14 @@ async function runAI() {
     resp.className = 'ai-resp show';
     resp.innerHTML = text.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>').replace(/\*(.*?)\*/g, '<em>$1</em>').replace(/\n/g, '<br/>');
   } catch(e) {
-    const tips = { groq: 'Check your key at <a href="https://console.groq.com" target="_blank" style="color:var(--accent)">console.groq.com</a>', gemini: 'Check your key at <a href="https://aistudio.google.com/apikey" target="_blank" style="color:var(--accent)">aistudio.google.com/apikey</a>', claude: 'Check your key at <a href="https://console.anthropic.com" target="_blank" style="color:var(--accent)">console.anthropic.com</a>', openai: 'Check your key at <a href="https://platform.openai.com/api-keys" target="_blank" style="color:var(--accent)">platform.openai.com</a>' };
     resp.className = 'ai-resp show';
-    if (key && prov) {
-      resp.innerHTML = `<span style="color:var(--red)">❌ <strong>Error:</strong> ${e.message}</span><br/><br/><span style="color:var(--muted2);font-size:12px">${tips[prov]||'Check your API key and try again.'}</span><br/><br/><button class="btn btn-secondary" style="font-size:12px;padding:7px 14px" onclick="openAIKeyModal()">Update Key</button>`;
+    if (e.message === '__NEEDS_CONNECT__') {
+      showAIConnectPrompt(resp);
+    } else if (key && prov) {
+      const tips = { groq: 'Check your key at <a href="https://console.groq.com" target="_blank" style="color:var(--accent)">console.groq.com</a>', gemini: 'Check your key at <a href="https://aistudio.google.com/apikey" target="_blank" style="color:var(--accent)">aistudio.google.com/apikey</a>', claude: 'Check your key at <a href="https://console.anthropic.com" target="_blank" style="color:var(--accent)">console.anthropic.com</a>', openai: 'Check your key at <a href="https://platform.openai.com/api-keys" target="_blank" style="color:var(--accent)">platform.openai.com</a>' };
+      resp.innerHTML = '<span style="color:var(--red)">❌ <strong>Error:</strong> ' + e.message + '</span><br/><br/><span style="color:var(--muted2);font-size:12px">' + (tips[prov]||'Check your API key and try again.') + '</span><br/><br/><button class="btn btn-secondary" style="font-size:12px;padding:7px 14px" onclick="openAIKeyModal()">Update Key</button>';
     } else {
-      resp.innerHTML = `<span style="color:var(--red)">❌ ${e.message}</span><br/><br/><span style="color:var(--muted2);font-size:12px">The free AI is temporarily unavailable. Try again in a moment, or <button class="btn btn-secondary" style="font-size:11px;padding:4px 10px;margin-left:4px" onclick="openAIKeyModal()">use your own key</button></span>`;
+      resp.innerHTML = '<span style="color:var(--red)">❌ ' + e.message + '</span>';
     }
   }
   btn.disabled = false; btn.textContent = 'Ask AI →';
@@ -1939,13 +2008,13 @@ function genStudyPlan() {
   for (let w = 0; w < weeks; w++) {
     const weekDays = Math.min(7, days - w * 7);
     const weekHrs = hrs * weekDays;
-    html += `<div style="margin-bottom:16px"><div style="font-family:'Clash Display',sans-serif;font-weight:700;font-size:13px;color:var(--accent);margin-bottom:8px">Week ${w + 1} — ${weekHrs}h</div>`;
+    html += `<div style="margin-bottom:16px"><div style="font-family:Clash Display,sans-serif;font-weight:700;font-size:13px;color:var(--accent);margin-bottom:8px">Week ${w + 1} — ${weekHrs}h</div>`;
     examList.forEach(ex => {
       const allocated = Math.round((ex.weight / totalWeight) * weekHrs * 10) / 10;
       if (allocated < 0.5) return;
       html += `<div style="display:flex;justify-content:space-between;padding:7px 0;border-bottom:1px solid var(--border);font-size:13px">
         <span>${ex.name} <span style="color:var(--muted);font-size:11px">· ${ex.subject}</span></span>
-        <span style="color:var(--accent4);font-family:'Clash Display',sans-serif;font-weight:700">${allocated}h</span>
+        <span style="color:var(--accent4);font-family:Clash Display,sans-serif;font-weight:700">${allocated}h</span>
       </div>`;
     });
     html += '</div>';
@@ -2123,11 +2192,11 @@ function openUserModal() {
   const { cumGPA } = computeAllGPA(); const cl = closestL(cumGPA);
   document.getElementById('user-modal-body').innerHTML = `
     <div style="text-align:center;padding:14px 0 18px">
-      <div style="width:56px;height:56px;border-radius:50%;background:var(--accent);display:flex;align-items:center;justify-content:center;font-family:'Clash Display',sans-serif;font-weight:700;font-size:24px;color:#fff;margin:0 auto 12px">${(profile.full_name||'?')[0].toUpperCase()}</div>
-      <div style="font-family:'Clash Display',sans-serif;font-weight:700;font-size:18px">${profile.full_name}</div>
+      <div style="width:56px;height:56px;border-radius:50%;background:var(--accent);display:flex;align-items:center;justify-content:center;font-family:Clash Display,sans-serif;font-weight:700;font-size:24px;color:#fff;margin:0 auto 12px">${(profile.full_name||'?')[0].toUpperCase()}</div>
+      <div style="font-family:Clash Display,sans-serif;font-weight:700;font-size:18px">${profile.full_name}</div>
       ${profile.university ? `<div style="font-size:12px;color:var(--muted);margin-top:4px">${profile.university}</div>` : ''}
       <div style="font-size:12px;color:var(--muted);margin-top:4px">${currentUser.email}</div>
-      <div style="margin-top:14px;font-family:'Clash Display',sans-serif;font-weight:700;font-size:28px;color:${gCol(cl)}">${cumGPA > 0 ? cumGPA.toFixed(4) : '—'}</div>
+      <div style="margin-top:14px;font-family:Clash Display,sans-serif;font-weight:700;font-size:28px;color:${gCol(cl)}">${cumGPA > 0 ? cumGPA.toFixed(4) : '—'}</div>
       <div style="font-size:12px;color:var(--muted)">Cumulative GPA · ${cl} · ${policies.scale} scale</div>
       <div style="margin-top:10px;font-size:11px;color:var(--green)">☁️ Cloud Synced · ${semesters.length} semester${semesters.length !== 1 ? 's' : ''}</div>
     </div>
@@ -2137,7 +2206,7 @@ function openUserModal() {
 
     <!-- EDIT PROFILE SECTION -->
     <div id="edit-profile-section" style="display:none;margin-top:16px;padding:14px;background:var(--surface2);border:1px solid var(--border);border-radius:var(--r)">
-      <div style="font-family:'Clash Display',sans-serif;font-weight:700;font-size:13px;margin-bottom:12px">✏️ Edit Profile</div>
+      <div style="font-family:Clash Display,sans-serif;font-weight:700;font-size:13px;margin-bottom:12px">✏️ Edit Profile</div>
       <div class="field" style="margin-bottom:10px">
         <label style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.07em">Display Name</label>
         <input type="text" id="edit-name" value="${profile.full_name||''}" placeholder="Your name"
@@ -2160,7 +2229,7 @@ function openUserModal() {
       <button class="btn btn-secondary" style="font-size:12px;padding:8px 14px" onclick="exportJSON();document.getElementById('user-modal').classList.remove('show')"><svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="url(#site-ig)" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block;vertical-align:middle;flex-shrink:0"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="9" y1="13" x2="15" y2="13"/><line x1="9" y1="17" x2="13" y2="17"/></svg> Export Backup</button>
     </div>
     <div id="change-pw-section" style="display:none;margin-top:16px;padding:14px;background:var(--surface2);border:1px solid var(--border);border-radius:var(--r)">
-      <div style="font-family:'Clash Display',sans-serif;font-weight:700;font-size:13px;margin-bottom:12px">🔑 Change Password</div>
+      <div style="font-family:Clash Display,sans-serif;font-weight:700;font-size:13px;margin-bottom:12px">🔑 Change Password</div>
       <div class="field" style="margin-bottom:10px">
         <label style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.07em">New Password</label>
         <input type="password" id="new-pw-inp" placeholder="At least 6 characters" style="width:100%;padding:9px 12px;background:var(--surface3);border:1px solid var(--border2);border-radius:8px;color:var(--text);font-family:'Cabinet Grotesk',sans-serif;font-size:13px;margin-top:4px"/>
@@ -2391,6 +2460,7 @@ function initAnimations() {
 // BOOT
 // ══════════════════════════════════════════════════════════════
 (async function boot() {
+  checkPollRedirect(); // grab key from URL if returning from Pollinations OAuth
   const t = localStorage.getItem('gpa-theme');
   if (t) { document.documentElement.setAttribute('data-theme', t); const btn = document.getElementById('themeBtn'); if (btn) btn.innerHTML = t === 'dark' ? `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="url(#site-ig)" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block;vertical-align:middle;flex-shrink:0"><path d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z"/></svg>` : `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="url(#site-ig)" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block;vertical-align:middle;flex-shrink:0"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>`; }
   if (localStorage.getItem('gpa-reduce-motion')) {
