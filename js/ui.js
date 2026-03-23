@@ -655,15 +655,8 @@ async function sendFloatAI(){
 
   let reply = '';
   try {
-    // Pollinations.AI — free built-in, no key needed (returns plain text)
-    const res = await fetch('https://text.pollinations.ai/', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ messages: [{ role: 'system', content: systemPrompt }, { role: 'user', content: text }], model: 'openai', seed: Math.floor(Math.random()*9999) })
-    });
-    if (!res.ok) throw new Error('Service unavailable (' + res.status + '). Try the AI Assistant tab to set up a free key.');
-    reply = (await res.text()).trim();
-    if (!reply) throw new Error('Empty response, please try again.');
+    // Free AI with multiple fallbacks — no key needed
+    reply = await callFreeAI(systemPrompt, text);
   } catch(e) { reply = 'Error: ' + e.message; }
 
   thinkDiv.className = 'af-msg ai'; thinkDiv.textContent = reply;
