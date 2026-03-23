@@ -1,4 +1,3 @@
-
 // ══════════════════════════════════════════════════════════════
 //  ⚙️  SUPABASE CONFIG
 // ══════════════════════════════════════════════════════════════
@@ -80,3 +79,9 @@ let editCtx = null;
 let chartInst = null, trendInst = null, semTrendInst = null;
 let examDates = {}; // examId -> date string
 
+// ══════════════════════════════════════════════════════════════
+// AI WORKER URL — set this after deploying worker/worker.js
+// to Cloudflare Workers. Leave empty to use fallback free AI.
+// ══════════════════════════════════════════════════════════════
+const AI_WORKER_URL = ''; // Set to your Cloudflare Worker URL after deploying worker/worker.js
+window.AI_WORKER_URL = AI_WORKER_URL; // e.g. 'https://gradintel-ai.yourname.workers.dev'
