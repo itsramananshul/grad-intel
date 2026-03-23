@@ -1743,96 +1743,139 @@ function fillFormsFromSyllabus() {
 // AI ASSISTANT — MULTI PROVIDER
 // ══════════════════════════════════════════════════════════════
 
-// ── GRADINTEL AI — Puter.js (free, no key, no signup ever) ──────────────────
-// Uses puter.js loaded in index.html. Falls back to Pollinations if unavailable.
-
-async function _ensurePuter() {
-  if (window.puter && window.puter.ai) return true;
-  // Load puter.js on demand
-  return new Promise((resolve) => {
-    if (document.getElementById('puter-script')) { resolve(false); return; }
-    const s = document.createElement('script');
-    s.id = 'puter-script';
-    s.src = 'https://js.puter.com/v2/';
-    s.onload = () => resolve(!!(window.puter && window.puter.ai));
-    s.onerror = () => resolve(false);
-    document.head.appendChild(s);
-  });
-}
-
-async function _puterAI(systemPrompt, userMessage) {
-  const ok = await _ensurePuter();
-  if (!ok) throw new Error('Puter unavailable');
-  const fullMsg = systemPrompt ? systemPrompt + '\n\n' + userMessage : userMessage;
-  const res = await puter.ai.chat(fullMsg, { model: 'gpt-4o-mini' });
-  const text = typeof res === 'string' ? res : res?.message?.content || res?.text || '';
-  if (!text.trim()) throw new Error('Empty response');
-  return text.trim();
-}
-
-async function _puterVisionAI(systemPrompt, userText, imageBase64Array) {
-  const ok = await _ensurePuter();
-  if (!ok) throw new Error('Puter unavailable');
-  const fullMsg = systemPrompt ? systemPrompt + '\n\n' + userText : userText;
-  // Puter supports image URLs - we pass as data URLs
-  const imageUrl = 'data:image/png;base64,' + imageBase64Array[0];
-  const res = await puter.ai.chat(fullMsg, imageUrl, { model: 'gpt-4o' });
-  const text = typeof res === 'string' ? res : res?.message?.content || res?.text || '';
-  if (!text.trim()) throw new Error('Empty response');
-  return text.trim();
-}
-
-async function _pollinationsAI(system, userMsg) {
-  const msgs = [];
-  if (system) msgs.push({ role: 'system', content: system });
-  msgs.push({ role: 'user', content: userMsg });
-  try {
-    const r = await fetch('https://text.pollinations.ai/openai/chat/completions', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ model: 'openai-fast', messages: msgs, max_tokens: 800, seed: Date.now() % 99999 }),
-      signal: AbortSignal.timeout(15000)
-    });
-    if (r.ok) { const j = await r.json(); const t = j.choices?.[0]?.message?.content || ''; if (t.trim()) return t.trim(); }
-  } catch(e) {}
-  const r2 = await fetch('https://text.pollinations.ai/', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ messages: msgs, model: 'openai', seed: Date.now() % 99999 }),
-    signal: AbortSignal.timeout(15000)
-  });
-  if (r2.ok) { const t = await r2.text(); if (t.trim()) return t.trim(); }
-  throw new Error('unavailable (' + r2.status + ')');
-}
+// ── GRADINTEL AI — races 5 free providers, first to respond wins ────────────
 
 async function callFreeAI(systemPrompt, userMessage) {
-  // 1. Puter.js — completely free, no key, no signup, GPT-4o quality
-  try { return await _puterAI(systemPrompt, userMessage); } catch(e) { console.warn('[AI] Puter:', e.message); }
-  // 2. Pollinations fallback
-  try { return await _pollinationsAI(systemPrompt, userMessage); } catch(e) { console.warn('[AI] Pollinations:', e.message); }
-  throw new Error('AI temporarily unavailable. Please try again in a few seconds.');
+  const msg = systemPrompt ? systemPrompt + '\n\n' + userMessage : userMessage;
+  const msgs = [];
+  if (systemPrompt) msgs.push({ role: 'system', content: systemPrompt });
+  msgs.push({ role: 'user', content: userMessage });
+
+  // Race all providers — whichever responds first wins
+  const providers = [
+
+    // 1. Airforce AI — no key, OpenAI-compatible
+    fetch('https://api.airforce/v1/chat/completions', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ model: 'gpt-4o-mini', messages: msgs, max_tokens: 800 }),
+      signal: AbortSignal.timeout(15000)
+    }).then(async r => {
+      if (!r.ok) throw new Error('airforce ' + r.status);
+      const j = await r.json();
+      const t = j.choices?.[0]?.message?.content || '';
+      if (!t.trim()) throw new Error('airforce empty');
+      return t.trim();
+    }),
+
+    // 2. g4f.dev public API — no key
+    fetch('https://api.g4f.dev/v1/chat/completions', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ model: 'gpt-4o-mini', messages: msgs, max_tokens: 800 }),
+      signal: AbortSignal.timeout(15000)
+    }).then(async r => {
+      if (!r.ok) throw new Error('g4f ' + r.status);
+      const j = await r.json();
+      const t = j.choices?.[0]?.message?.content || '';
+      if (!t.trim()) throw new Error('g4f empty');
+      return t.trim();
+    }),
+
+    // 3. Pollinations OpenAI-compatible
+    fetch('https://text.pollinations.ai/openai/chat/completions', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ model: 'openai-fast', messages: msgs, max_tokens: 800, seed: Date.now() % 99999 }),
+      signal: AbortSignal.timeout(15000)
+    }).then(async r => {
+      if (!r.ok) throw new Error('pollinations ' + r.status);
+      const j = await r.json();
+      const t = j.choices?.[0]?.message?.content || '';
+      if (!t.trim()) throw new Error('pollinations empty');
+      return t.trim();
+    }),
+
+    // 4. Pollinations plain text
+    fetch('https://text.pollinations.ai/', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ messages: msgs, model: 'openai', seed: Date.now() % 99999 }),
+      signal: AbortSignal.timeout(15000)
+    }).then(async r => {
+      if (!r.ok) throw new Error('pollinations2 ' + r.status);
+      const t = await r.text();
+      if (!t.trim()) throw new Error('pollinations2 empty');
+      return t.trim();
+    }),
+
+    // 5. Keyless GPT-4o-mini GET endpoint
+    fetch('https://free-unoficial-gpt4o-mini-api-g70n.onrender.com/chat/?query=' + encodeURIComponent(msg), {
+      signal: AbortSignal.timeout(20000)
+    }).then(async r => {
+      if (!r.ok) throw new Error('gpt4free ' + r.status);
+      const j = await r.json();
+      const t = j.response || j.text || j.content || j.message || '';
+      if (!t.trim()) throw new Error('gpt4free empty');
+      return t.trim();
+    }),
+
+  ];
+
+  // Return first success
+  return Promise.any(providers).catch(() => {
+    throw new Error('AI temporarily unavailable. Please try again in a few seconds.');
+  });
 }
 
 async function callFreeVisionAI(systemPrompt, userText, imageBase64Array) {
-  // 1. Puter.js vision — free, no key
-  try { return await _puterVisionAI(systemPrompt, userText, imageBase64Array); } catch(e) { console.warn('[Vision] Puter:', e.message); }
-  // 2. Pollinations vision fallback
-  try {
-    const content = [
-      ...imageBase64Array.map(b64 => ({ type: 'image_url', image_url: { url: 'data:image/png;base64,' + b64 } })),
-      { type: 'text', text: userText }
-    ];
-    const msgs = [{ role: 'user', content }];
-    if (systemPrompt) msgs.unshift({ role: 'system', content: systemPrompt });
-    const r = await fetch('https://text.pollinations.ai/openai/chat/completions', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+  const msgs = [];
+  if (systemPrompt) msgs.push({ role: 'system', content: systemPrompt });
+  msgs.push({ role: 'user', content: [
+    ...imageBase64Array.map(b64 => ({ type: 'image_url', image_url: { url: 'data:image/png;base64,' + b64 } })),
+    { type: 'text', text: userText }
+  ]});
+
+  const providers = [
+    // 1. Airforce AI with vision
+    fetch('https://api.airforce/v1/chat/completions', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ model: 'gpt-4o', messages: msgs, max_tokens: 1500 }),
+      signal: AbortSignal.timeout(20000)
+    }).then(async r => {
+      if (!r.ok) throw new Error('airforce-v ' + r.status);
+      const j = await r.json();
+      const t = j.choices?.[0]?.message?.content || '';
+      if (!t.trim()) throw new Error('empty');
+      return t.trim();
+    }),
+
+    // 2. g4f.dev with vision
+    fetch('https://api.g4f.dev/v1/chat/completions', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ model: 'gpt-4o', messages: msgs, max_tokens: 1500 }),
+      signal: AbortSignal.timeout(20000)
+    }).then(async r => {
+      if (!r.ok) throw new Error('g4f-v ' + r.status);
+      const j = await r.json();
+      const t = j.choices?.[0]?.message?.content || '';
+      if (!t.trim()) throw new Error('empty');
+      return t.trim();
+    }),
+
+    // 3. Pollinations vision
+    fetch('https://text.pollinations.ai/openai/chat/completions', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ model: 'openai', messages: msgs, max_tokens: 1500 }),
       signal: AbortSignal.timeout(20000)
-    });
-    if (r.ok) { const j = await r.json(); const t = j.choices?.[0]?.message?.content || ''; if (t.trim()) return t.trim(); }
-  } catch(e) { console.warn('[Vision] Pollinations:', e.message); }
-  throw new Error('Vision AI temporarily unavailable. Please try again.');
+    }).then(async r => {
+      if (!r.ok) throw new Error('poll-v ' + r.status);
+      const j = await r.json();
+      const t = j.choices?.[0]?.message?.content || '';
+      if (!t.trim()) throw new Error('empty');
+      return t.trim();
+    }),
+  ];
+
+  return Promise.any(providers).catch(() => {
+    throw new Error('Vision AI temporarily unavailable. Please try again.');
+  });
 }
 
 async function scannedPdfToImages(file, maxPages) {
@@ -1860,6 +1903,7 @@ async function scannedPdfToImages(file, maxPages) {
   }
   return images;
 }
+
 
 // ─────────────────────────────────────────────────────────────────────────────
 
