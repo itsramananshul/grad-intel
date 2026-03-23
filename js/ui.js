@@ -657,7 +657,21 @@ async function sendFloatAI(){
   try {
     // Free AI with multiple fallbacks — no key needed
     reply = await callFreeAI(systemPrompt, text);
-  } catch(e) { reply = 'Error: ' + e.message; }
+  } catch(e) {
+    if (e.message === '__NEEDS_CONNECT__') {
+      thinkDiv.className = 'af-msg ai';
+      thinkDiv.innerHTML = '<div style="text-align:center;padding:10px">' +
+        '<div style="font-size:22px;margin-bottom:8px">🤖</div>' +
+        '<div style="font-size:13px;font-weight:700;margin-bottom:6px">Connect Free AI</div>' +
+        '<div style="font-size:12px;color:var(--muted2);margin-bottom:12px">Free · No credit card · 30 seconds</div>' +
+        '<button onclick="connectPollAI()" style="padding:9px 18px;background:linear-gradient(135deg,var(--accent),var(--accent2));' +
+          'color:#fff;border:none;border-radius:10px;font-size:13px;font-weight:700;cursor:pointer">' +
+          '🌸 Connect Pollinations (free)</button></div>';
+      sendBtn.disabled = false;
+      return;
+    }
+    reply = '❌ ' + e.message;
+  }
 
   thinkDiv.className = 'af-msg ai'; thinkDiv.textContent = reply;
   sendBtn.disabled = false; msgs.scrollTop = msgs.scrollHeight;
