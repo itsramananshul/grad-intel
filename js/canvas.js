@@ -1083,115 +1083,158 @@ function handleDegreePdfDrop(event) {
   else showToast('Please drop a PDF file!');
 }
 
-function handleDegreePdfFile(file) {
+async function handleDegreePdfFile(file) {
   if (!file) return;
   const statusEl = document.getElementById('pdf-ai-status');
   const msgEl    = document.getElementById('pdf-ai-msg');
   const previewEl= document.getElementById('pdf-ai-preview');
-  statusEl.style.display = 'block';
-  previewEl.style.display = 'none';
-  msgEl.textContent = 'Reading PDF…';
+  const spinEl   = document.getElementById('pdf-ai-spinner');
+  // Check if AI is connected (Pollinations BYOP or own key)
+  const _pollKey = localStorage.getItem('gradintel_poll_user_key') || '';
+  const _ownProv = localStorage.getItem('gradintel_ai_prov') || '';
+  const _ownKey  = _ownProv ? (localStorage.getItem('gradintel_ai_key_' + _ownProv) || '') : '';
+  const _connectPrompt = document.getElementById('pdf-ai-connect-prompt');
 
-  const prov = localStorage.getItem('gradintel_ai_prov') || 'gemini';
-  const key  = localStorage.getItem('gradintel_ai_key_' + prov) || '';
-  if (!key) {
-    msgEl.textContent = '⚠️ No AI key set — go to the AI Assistant tab to add your API key first.';
-    document.getElementById('pdf-ai-spinner').style.display = 'none';
+  if (!_pollKey && !_ownKey) {
+    if (_connectPrompt) _connectPrompt.style.display = 'block';
     return;
   }
+  if (_connectPrompt) _connectPrompt.style.display = 'none';
 
-  const reader = new FileReader();
-  reader.onload = async function(e) {
-    const base64 = e.target.result.split(',')[1];
-    msgEl.textContent = '🤖 Asking AI to extract degree requirements…';
+  statusEl.style.display = 'block';
+  previewEl.style.display = 'none';
+  if (spinEl) spinEl.style.display = '';
+  msgEl.textContent = 'Reading PDF…';
+
+  const prov = _ownProv;
+  const key  = _ownKey;
+
+  const prompt = `You are reading a university degree requirements PDF. Extract ALL course requirements listed. For each course/requirement output a JSON array. Each item should have: "name" (course name), "credits" (number, default 3 if not specified), "category" (e.g. Core, Elective, Lab, Gen Ed, Major, Minor — infer from context), "status" (always "pending"). Also extract the degree name if visible as "degreeName" and total credits required as "totalCredits" (number). Return ONLY valid JSON, no markdown, no explanation. Format: { "degreeName": "...", "totalCredits": 120, "courses": [{...}, ...] }`;
+
+  try {
+    let jsonText = '';
+
+    // Step 1: Try to extract text from PDF with PDF.js
+    msgEl.textContent = '📄 Extracting text from PDF…';
+    let pdfText = '';
     try {
-      let jsonText = '';
-      const prompt = `You are reading a university degree requirements PDF. Extract ALL course requirements listed. For each course/requirement output a JSON array. Each item should have: "name" (course name), "credits" (number, default 3 if not specified), "category" (e.g. Core, Elective, Lab, Gen Ed, Major, Minor — infer from context), "status" (always "pending"). Also extract the degree name if visible as "degreeName" and total credits required as "totalCredits" (number). Return ONLY valid JSON, no markdown, no explanation. Format: { "degreeName": "...", "totalCredits": 120, "courses": [{...}, ...] }`;
+      if (!window.pdfjsLib) {
+        await new Promise((resolve, reject) => {
+          const s = document.createElement('script');
+          s.src = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js';
+          s.onload = resolve; s.onerror = reject;
+          document.head.appendChild(s);
+        });
+        window.pdfjsLib.GlobalWorkerOptions.workerSrc =
+          'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+      }
+      const arrayBuf = await file.arrayBuffer();
+      const doc = await window.pdfjsLib.getDocument({ data: new Uint8Array(arrayBuf) }).promise;
+      for (let i = 1; i <= Math.min(doc.numPages, 15); i++) {
+        const page = await doc.getPage(i);
+        const tc = await page.getTextContent();
+        pdfText += tc.items.map(t => t.str).join(' ') + '\n';
+      }
+    } catch(pe) { pdfText = ''; }
 
-      if (prov === 'gemini') {
-        const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${key}`, {
+    if (pdfText && pdfText.trim().length > 80) {
+      // Has text — send to free AI
+      msgEl.textContent = '🤖 Asking AI to extract requirements…';
+      const textPrompt = 'Here is text from a degree requirements PDF:\n\n' + pdfText.slice(0, 10000) + '\n\n' + prompt;
+
+      if (prov === 'gemini' && key) {
+        const res = await fetch('https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=' + key, {
           method: 'POST', headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ contents: [{ parts: [
-            { inline_data: { mime_type: 'application/pdf', data: base64 } },
-            { text: prompt }
-          ]}], generationConfig: { maxOutputTokens: 2000 }})
+          body: JSON.stringify({ contents: [{ parts: [{ text: textPrompt }] }], generationConfig: { maxOutputTokens: 2000 } })
         });
         const d = await res.json();
         jsonText = d?.candidates?.[0]?.content?.parts?.[0]?.text || '';
+      } else if (prov === 'claude' && key) {
+        const res = await fetch('https://api.anthropic.com/v1/messages', {
+          method: 'POST', headers: { 'Content-Type': 'application/json', 'x-api-key': key, 'anthropic-version': '2023-06-01' },
+          body: JSON.stringify({ model: 'claude-haiku-4-5-20251001', max_tokens: 2000, messages: [{ role: 'user', content: textPrompt }] })
+        });
+        const d = await res.json(); jsonText = d?.content?.[0]?.text || '';
+      } else if ((prov === 'groq' || prov === 'openai') && key) {
+        const urls = { groq: 'https://api.groq.com/openai/v1/chat/completions', openai: 'https://api.openai.com/v1/chat/completions' };
+        const models = { groq: 'llama3-8b-8192', openai: 'gpt-4o-mini' };
+        const res = await fetch(urls[prov], {
+          method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + key },
+          body: JSON.stringify({ model: models[prov], max_tokens: 2000, messages: [{ role: 'user', content: textPrompt }] })
+        });
+        const d = await res.json(); jsonText = d?.choices?.[0]?.message?.content || '';
       } else {
-        // For non-multimodal providers, extract text from PDF using pdf.js then send as text
-        msgEl.textContent = '📄 Extracting PDF text for AI…';
-        let pdfText = '';
-        try {
-          const pdfData = Uint8Array.from(atob(base64), c => c.charCodeAt(0));
-          if (window.pdfjsLib) {
-            const doc = await window.pdfjsLib.getDocument({ data: pdfData }).promise;
-            for (let i = 1; i <= Math.min(doc.numPages, 15); i++) {
-              const page = await doc.getPage(i);
-              const tc = await page.getTextContent();
-              pdfText += tc.items.map(t => t.str).join(' ') + '\n';
-            }
-          }
-        } catch(pe) { pdfText = '[PDF text extraction failed — try Gemini for best results]'; }
-        msgEl.textContent = '🤖 Asking AI to extract degree requirements…';
-        const textPrompt = `Here is text extracted from a university degree requirements PDF:\n\n${pdfText.slice(0, 8000)}\n\n${prompt}`;
-        if (prov === 'claude') {
-          const res = await fetch('https://api.anthropic.com/v1/messages', {
-            method:'POST', headers:{'Content-Type':'application/json','x-api-key':key,'anthropic-version':'2023-06-01'},
-            body: JSON.stringify({ model:'claude-haiku-4-5-20251001', max_tokens:2000, messages:[{role:'user',content:textPrompt}]})
-          });
-          const d = await res.json(); jsonText = d?.content?.[0]?.text || '';
-        } else if (prov && key) {
-          const urls = { groq:'https://api.groq.com/openai/v1/chat/completions', openai:'https://api.openai.com/v1/chat/completions' };
-          const models = { groq:'llama3-8b-8192', openai:'gpt-4o-mini' };
-          const res = await fetch(urls[prov]||urls.openai, {
-            method:'POST', headers:{'Content-Type':'application/json','Authorization':'Bearer '+key},
-            body: JSON.stringify({ model:models[prov]||models.openai, max_tokens:2000, messages:[{role:'user',content:textPrompt}]})
-          });
-          const d = await res.json(); jsonText = d?.choices?.[0]?.message?.content || '';
-        } else {
-          // No key set — use free AI
-          jsonText = await callFreeAI('You are a university degree requirements extractor. Return ONLY valid JSON, no markdown.', textPrompt);
-        }
+        // No key — use free AI
+        jsonText = await callFreeAI('You are a university degree requirements extractor. Return ONLY valid JSON, no markdown.', textPrompt);
       }
 
-      // Parse JSON
-      const clean = jsonText.replace(/```json|```/g,'').trim();
-      const parsed = JSON.parse(clean);
-      const courses = parsed.courses || parsed;
-
-      // Show preview
-      msgEl.textContent = `✅ Found ${courses.length} course requirements!`;
-      document.getElementById('pdf-ai-spinner').style.display = 'none';
-      previewEl.style.display = 'block';
-      previewEl.innerHTML = `
-        <div style="background:var(--surface2);border:1px solid var(--border);border-radius:var(--r);padding:16px">
-          <div style="font-family:'Clash Display',sans-serif;font-weight:700;font-size:14px;margin-bottom:4px">
-            ${parsed.degreeName ? '🎓 ' + parsed.degreeName : '🎓 Degree Requirements'}
-          </div>
-          ${parsed.totalCredits ? `<div style="font-size:12px;color:var(--muted);margin-bottom:12px">Total Credits: ${parsed.totalCredits}</div>` : ''}
-          <div style="max-height:220px;overflow-y:auto;margin-bottom:14px">
-            ${courses.slice(0,50).map(c=>`
-              <div style="display:flex;justify-content:space-between;align-items:center;padding:6px 0;border-bottom:1px solid var(--border)">
-                <div><span style="font-size:12px;font-weight:600">${c.name||'Untitled'}</span>
-                  <span style="font-size:10px;color:var(--muted);margin-left:6px">${c.category||'General'}</span></div>
-                <span style="font-size:11px;color:var(--accent)">${c.credits||3} cr</span>
-              </div>`).join('')}
-            ${courses.length>50?`<div style="font-size:11px;color:var(--muted);padding-top:6px">...and ${courses.length-50} more</div>`:''}
-          </div>
-          <div style="display:flex;gap:10px">
-            <button class="btn btn-primary" onclick="importDegreePdfCourses(${JSON.stringify(courses).replace(/"/g,'&quot;')}, '${(parsed.degreeName||'').replace(/'/g,'')}', ${parsed.totalCredits||0})">
-              ✅ Import All ${courses.length} Requirements
-            </button>
-            <button class="btn btn-secondary" onclick="document.getElementById('pdf-ai-preview').style.display='none'">Discard</button>
-          </div>
-        </div>`;
-    } catch(err) {
-      msgEl.textContent = '❌ Error: ' + (err.message || 'Could not parse response. Try a text-based PDF.');
-      document.getElementById('pdf-ai-spinner').style.display = 'none';
+    } else {
+      // Scanned/image PDF — render pages and use free vision AI
+      msgEl.textContent = '🖼️ Scanned PDF detected — using AI vision…';
+      try {
+        const images = await scannedPdfToImages(file, 5);
+        if (!images.length) throw new Error('No pages rendered');
+        if (prov === 'gemini' && key) {
+          // Gemini can read PDFs natively
+          const reader2 = new FileReader();
+          const base64 = await new Promise(res => { reader2.onload = e => res(e.target.result.split(',')[1]); reader2.readAsDataURL(file); });
+          const r = await fetch('https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=' + key, {
+            method: 'POST', headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ contents: [{ parts: [{ inline_data: { mime_type: 'application/pdf', data: base64 } }, { text: prompt }] }], generationConfig: { maxOutputTokens: 2000 } })
+          });
+          const d = await r.json(); jsonText = d?.candidates?.[0]?.content?.parts?.[0]?.text || '';
+        } else {
+          jsonText = await callFreeVisionAI('You are a degree requirements extractor. Return ONLY valid JSON.', prompt, images);
+        }
+      } catch(visErr) {
+        throw new Error('Could not read scanned PDF: ' + visErr.message);
+      }
     }
-  };
-  reader.readAsDataURL(file);
+
+    if (!jsonText) throw new Error('No response from AI. Please try again.');
+
+    // Parse JSON
+    const clean = jsonText.replace(/```json|```/g, '').trim();
+    const parsed = JSON.parse(clean);
+    const courses = parsed.courses || parsed;
+
+    if (spinEl) spinEl.style.display = 'none';
+    msgEl.textContent = '✅ Found ' + courses.length + ' course requirements!';
+    previewEl.style.display = 'block';
+    // Build preview safely
+    const degTitle = parsed.degreeName ? '🎓 ' + parsed.degreeName : '🎓 Degree Requirements';
+    const credLine = parsed.totalCredits ? '<div style="font-size:12px;color:var(--muted);margin-bottom:12px">Total Credits: ' + parsed.totalCredits + '</div>' : '';
+    const courseRows = courses.slice(0, 50).map(function(c) {
+      return '<div style="display:flex;justify-content:space-between;align-items:center;padding:6px 0;border-bottom:1px solid var(--border)">' +
+        '<div><span style="font-size:12px;font-weight:600">' + (c.name || 'Untitled') + '</span>' +
+        '<span style="font-size:10px;color:var(--muted);margin-left:6px">' + (c.category || 'General') + '</span></div>' +
+        '<span style="font-size:11px;color:var(--accent)">' + (c.credits || 3) + ' cr</span></div>';
+    }).join('');
+    const moreRow = courses.length > 50 ? '<div style="font-size:11px;color:var(--muted);padding-top:6px">...and ' + (courses.length - 50) + ' more</div>' : '';
+    previewEl.innerHTML = '<div style="background:var(--surface2);border:1px solid var(--border);border-radius:var(--r);padding:16px">' +
+      '<div style="font-family:Clash Display,sans-serif;font-weight:700;font-size:14px;margin-bottom:4px">' + degTitle + '</div>' +
+      credLine +
+      '<div style="max-height:220px;overflow-y:auto;margin-bottom:14px">' + courseRows + moreRow + '</div>' +
+      '<div style="display:flex;gap:10px">' +
+        '<button class="btn btn-primary" id="deg-pdf-import-btn">✅ Import All ' + courses.length + ' Requirements</button>' +
+        '<button class="btn btn-secondary" onclick="document.getElementById(&quot;pdf-ai-preview&quot;).style.display=&quot;none&quot;">Discard</button>' +
+      '</div></div>';
+    // Wire up import button
+    const _importCourses = courses;
+    const _importName = parsed.degreeName || '';
+    const _importCredits = parsed.totalCredits || 0;
+    document.getElementById('deg-pdf-import-btn').onclick = function() {
+      importDegreePdfCourses(_importCourses, _importName, _importCredits);
+    }
+  } catch(err) {
+    if (spinEl) spinEl.style.display = 'none';
+    if (err.message === '__NEEDS_CONNECT__') {
+      statusEl.style.display = 'none';
+      if (_connectPrompt) _connectPrompt.style.display = 'block';
+    } else {
+      msgEl.textContent = '❌ Error: ' + (err.message || 'Could not parse response. Try a text-based PDF.');
+    }
+  }
 }
 
 
@@ -2470,4 +2513,3 @@ function ciClearBmPreview() {
     }, 2500);
   });
 })();
-
