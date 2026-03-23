@@ -1091,23 +1091,62 @@ function renderCalendar() {
   const all = []; semesters.forEach(sem => sem.subjects.forEach(s => all.push({ s, sem })));
   const withRem = all.filter(({ s }) => (s.exams || []).some(e => !e.taken));
   if (!withRem.length) { c.innerHTML = '<div style="color:var(--muted);font-size:13px">No remaining exams.</div>'; return; }
+
+  const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  const currentYear = new Date().getFullYear();
+  const years = [];
+  for (let y = currentYear; y <= currentYear + 4; y++) years.push(y);
+
+  function buildDatePicker(key) {
+    const saved = examDates[key] || '';
+    let selY = '', selM = '', selD = '';
+    if (saved) { const parts = saved.split('-'); selY = parts[0]; selM = String(parseInt(parts[1])-1); selD = String(parseInt(parts[2])); }
+
+    const yearOpts = years.map(y => `<option value="${y}" ${selY==y?'selected':''}>${y}</option>`).join('');
+    const monthOpts = months.map((m,i) => `<option value="${i}" ${selM==i?'selected':''}>${m}</option>`).join('');
+    const dayOpts = Array.from({length:31},(_,i)=>i+1).map(d => `<option value="${d}" ${selD==d?'selected':''}>${d}</option>`).join('');
+
+    return `<div style="display:flex;gap:4px;align-items:center;flex-wrap:wrap" data-key="${key}">
+      <select onchange="calPickerChange('${key}')" id="cpy-${key}" style="padding:5px 4px;font-size:11px;background:var(--surface2);border:1px solid var(--border2);border-radius:6px;color:var(--text);flex:1;min-width:60px">
+        <option value="">Year</option>${yearOpts}
+      </select>
+      <select onchange="calPickerChange('${key}')" id="cpm-${key}" style="padding:5px 4px;font-size:11px;background:var(--surface2);border:1px solid var(--border2);border-radius:6px;color:var(--text);flex:1;min-width:48px">
+        <option value="">Mon</option>${monthOpts}
+      </select>
+      <select onchange="calPickerChange('${key}')" id="cpd-${key}" style="padding:5px 4px;font-size:11px;background:var(--surface2);border:1px solid var(--border2);border-radius:6px;color:var(--text);flex:1;min-width:44px">
+        <option value="">Day</option>${dayOpts}
+      </select>
+    </div>`;
+  }
+
   let html = '';
   withRem.forEach(({ s }) => {
     (s.exams || []).filter(e => !e.taken).forEach(e => {
       const key = e.id;
       const hasDate = !!examDates[key];
-      html += `<div class="cal-exam-row">
-        <div class="cal-date"><input type="date" value="${examDates[key]||''}" onchange="setExamDate('${key}',this.value)" style="padding:6px;font-size:11px;width:100%"/></div>
-        <div style="flex:1">
+      html += `<div class="cal-exam-row" style="flex-wrap:wrap;gap:10px">
+        <div style="flex:1;min-width:180px">
           <div class="cal-name">${e.name}</div>
           <div class="cal-sub">${s.name} · ${e.weight.toFixed(0)}% of course grade</div>
           ${hasDate ? `<div class="cal-countdown" id="cd-${key}" data-date="${examDates[key]}">Loading…</div>` : ''}
         </div>
+        <div style="flex:0 0 auto">${buildDatePicker(key)}</div>
       </div>`;
     });
   });
   c.innerHTML = html;
   tickCountdowns();
+}
+
+function calPickerChange(key) {
+  const y = document.getElementById('cpy-'+key)?.value;
+  const m = document.getElementById('cpm-'+key)?.value;
+  const d = document.getElementById('cpd-'+key)?.value;
+  if (y && m !== '' && d) {
+    const mm = String(parseInt(m)+1).padStart(2,'0');
+    const dd = String(parseInt(d)).padStart(2,'0');
+    setExamDate(key, `${y}-${mm}-${dd}`);
+  }
 }
 function setExamDate(examId, date) {
   examDates[examId] = date;
@@ -2219,9 +2258,9 @@ function initAnimations() {
 
   // Cursor dot: instant. Ring: faster lerp (0.22 instead of 0.12) for less lag feeling
   (function animCursor() {
-    cur.style.transform = 'translate(' + (mx - 4) + 'px,' + (my - 4) + 'px)';
-    rx += (mx - rx) * .22; ry += (my - ry) * .22;
-    ring.style.transform = 'translate(' + (rx - 16) + 'px,' + (ry - 16) + 'px)';
+    cur.style.transform = 'translate3d(' + (mx - 4) + 'px,' + (my - 4) + 'px,0)';
+    rx += (mx - rx) * .15; ry += (my - ry) * .15;
+    ring.style.transform = 'translate3d(' + (rx - 16) + 'px,' + (ry - 16) + 'px,0)';
     requestAnimationFrame(animCursor);
   })();
 
@@ -2232,11 +2271,8 @@ function initAnimations() {
   resize(); window.addEventListener('resize', resize, { passive: true });
   class P { constructor() { this.reset(true); } reset(init) { this.x = Math.random() * W; this.y = init ? Math.random() * H : Math.random() * H; this.vx = (Math.random() - .5) * .25; this.vy = (Math.random() - .5) * .25; this.life = Math.random(); this.maxLife = .6 + Math.random() * .4; this.size = Math.random() * 1.2 + .3; this.color = Math.random() < .5 ? '129,140,248' : '244,114,182'; } update() { this.x += this.vx; this.y += this.vy; this.life += .002; if (this.life > this.maxLife || this.x < 0 || this.x > W || this.y < 0 || this.y > H) this.reset(false); } draw() { const a = Math.sin((this.life / this.maxLife) * Math.PI) * .45; ctx.beginPath(); ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2); ctx.fillStyle = `rgba(${this.color},${a})`; ctx.fill(); } }
   for (let i = 0; i < 40; i++) particles.push(new P());
-  let lastFrame = 0;
-  (function loop(ts) {
+  (function loop() {
     requestAnimationFrame(loop);
-    if (ts - lastFrame < 33) return; // cap at ~30fps
-    lastFrame = ts;
     ctx.clearRect(0, 0, W, H);
     particles.forEach(p => { p.update(); p.draw(); });
   })();
@@ -2286,4 +2322,3 @@ function initAnimations() {
     if (event === 'SIGNED_IN' && session && !currentUser) { currentUser = session.user; await onAuthSuccess(); }
   });
 })();
-
