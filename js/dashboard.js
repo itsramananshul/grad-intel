@@ -1743,79 +1743,67 @@ function fillFormsFromSyllabus() {
 // AI ASSISTANT — MULTI PROVIDER
 // ══════════════════════════════════════════════════════════════
 
-// ── GRADINTEL AI — Pollinations authenticated ────────────────────────────────
+// ── GRADINTEL AI — gen.pollinations.ai with your API key ─────────────────────
 const _PK = 'pk_baCEYMuHFzHHJTBf';
+const _BASE = 'https://gen.pollinations.ai';
 
 async function callFreeAI(systemPrompt, userMessage) {
   const msgs = [];
   if (systemPrompt) msgs.push({ role: 'system', content: systemPrompt });
   msgs.push({ role: 'user', content: userMessage });
 
-  // Try authenticated Pollinations endpoints in order
-  const attempts = [
-    () => fetch('https://text.pollinations.ai/openai/chat/completions', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + _PK },
-      body: JSON.stringify({ model: 'openai', messages: msgs, max_tokens: 800, seed: Date.now() % 99999 }),
-      signal: AbortSignal.timeout(20000)
-    }).then(async r => {
-      if (!r.ok) throw new Error(r.status);
-      const j = await r.json();
-      const t = j.choices?.[0]?.message?.content || '';
-      if (!t.trim()) throw new Error('empty');
-      return t.trim();
-    }),
-    () => fetch('https://text.pollinations.ai/', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + _PK },
-      body: JSON.stringify({ messages: msgs, model: 'openai', seed: Date.now() % 99999 }),
-      signal: AbortSignal.timeout(20000)
-    }).then(async r => {
-      if (!r.ok) throw new Error(r.status);
-      const t = await r.text();
-      if (!t.trim()) throw new Error('empty');
-      return t.trim();
-    }),
-    () => fetch('https://text.pollinations.ai/openai/chat/completions', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + _PK },
-      body: JSON.stringify({ model: 'openai-fast', messages: msgs, max_tokens: 800 }),
-      signal: AbortSignal.timeout(20000)
-    }).then(async r => {
-      if (!r.ok) throw new Error(r.status);
-      const j = await r.json();
-      const t = j.choices?.[0]?.message?.content || '';
-      if (!t.trim()) throw new Error('empty');
-      return t.trim();
-    }),
-  ];
+  const res = await fetch(_BASE + '/v1/chat/completions', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': 'Bearer ' + _PK
+    },
+    body: JSON.stringify({ model: 'openai', messages: msgs, max_tokens: 800 }),
+    signal: AbortSignal.timeout(25000)
+  });
 
-  for (const attempt of attempts) {
-    try { return await attempt(); } catch(e) { console.warn('[AI]', e.message); }
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err?.error?.message || 'AI error ' + res.status);
   }
-  throw new Error('AI temporarily unavailable. Please try again.');
+
+  const data = await res.json();
+  const text = data.choices?.[0]?.message?.content || '';
+  if (!text.trim()) throw new Error('Empty response from AI. Please try again.');
+  return text.trim();
 }
 
 async function callFreeVisionAI(systemPrompt, userText, imageBase64Array) {
   const content = [
-    ...imageBase64Array.map(b64 => ({ type: 'image_url', image_url: { url: 'data:image/png;base64,' + b64 } })),
+    ...imageBase64Array.map(b64 => ({
+      type: 'image_url',
+      image_url: { url: 'data:image/png;base64,' + b64 }
+    })),
     { type: 'text', text: userText }
   ];
   const msgs = [];
   if (systemPrompt) msgs.push({ role: 'system', content: systemPrompt });
   msgs.push({ role: 'user', content });
 
-  const r = await fetch('https://text.pollinations.ai/openai/chat/completions', {
+  const res = await fetch(_BASE + '/v1/chat/completions', {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + _PK },
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': 'Bearer ' + _PK
+    },
     body: JSON.stringify({ model: 'openai', messages: msgs, max_tokens: 1500 }),
-    signal: AbortSignal.timeout(25000)
+    signal: AbortSignal.timeout(30000)
   });
-  if (!r.ok) throw new Error('Vision AI unavailable (' + r.status + ')');
-  const j = await r.json();
-  const t = j.choices?.[0]?.message?.content || '';
-  if (!t.trim()) throw new Error('Empty vision response');
-  return t.trim();
+
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err?.error?.message || 'Vision AI error ' + res.status);
+  }
+
+  const data = await res.json();
+  const text = data.choices?.[0]?.message?.content || '';
+  if (!text.trim()) throw new Error('Empty vision response. Please try again.');
+  return text.trim();
 }
 
 async function scannedPdfToImages(file, maxPages) {
@@ -1843,6 +1831,7 @@ async function scannedPdfToImages(file, maxPages) {
   }
   return images;
 }
+
 
 
 
